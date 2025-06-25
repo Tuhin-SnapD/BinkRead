@@ -1,9 +1,6 @@
 from flask import Flask, render_template, request
 from transformers import pipeline
 import fitz
-import torch
-
-print("Torch version:", torch.__version__)
 app = Flask(__name__)
 
 
@@ -18,10 +15,14 @@ def upload_pdf():
    if file and file.filename.endswith('.pdf'):
        pdf = fitz.open(stream=file.read(), filetype="pdf")
        pdf_text = ""
+       # In this loop we r taking out all the text and storing it into a 'pdf_text' variable.
        for page in pdf:
            pdf_text += page.get_text()
+       # In the with the help of bard model, the pipeline summarizes the pdf for us.
        summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
-       summary = summarizer(pdf_text, max_length=100, min_length=30)
+
+       #We store the summary in a variable
+       summary = summarizer(pdf_text, max_length=500, min_length=30)
        print(summary)
        return render_template("index.html",summary=summary)
    return "Error"
