@@ -157,7 +157,6 @@ Check the console output for detailed error messages and processing information.
 Special thanks to our contributors:
 
 - [@Ayushi-Rahane](https://github.com/Ayushi-Rahane) - Contributor
-- [@Tuhin-SnapD](https://github.com/Tuhin-SnapD) - Project Lead
 
 ## License
 
