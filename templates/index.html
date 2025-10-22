@@ -1,22 +1,166 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BlinkRead</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-  </head>
-  <body>
-    <h1>Welcome to BlinkRead!</h1>
-    <form action="/upload" method="POST" enctype="multipart/form-data">
-        <input type="file" name="uploaded_file" required accept=".pdf">
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h1 class="display-4 fw-bold mb-4">Transform PDFs into Insights</h1>
+                <p class="lead mb-4">
+                    Upload your PDF documents and get AI-powered summaries in seconds. 
+                    Perfect for research papers, reports, and lengthy documents.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Section -->
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <h2 class="card-title text-center mb-4">Upload Your PDF</h2>
+                    
+                    <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+                        <div id="uploadArea" class="upload-area">
+                            <div class="mb-3">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <h4>Drag & Drop Your PDF Here</h4>
+                                <p class="text-muted">or click to browse files</p>
+                            </div>
+                            
+                            <input type="file" 
+                                   id="fileInput" 
+                                   name="uploaded_file" 
+                                   accept=".pdf" 
+                                   required 
+                                   style="display: none;">
+                        </div>
+                        
+                        <div id="fileInfo" class="file-info" style="display: none;"></div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" 
+                                    id="submitBtn" 
+                                    class="btn btn-primary btn-lg px-5" 
+                                    disabled>
+                                <span id="loadingSpinner" class="loading-spinner">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                </span>
+                                <span id="buttonText">Upload & Summarize</span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            <strong>Supported formats:</strong> PDF only<br>
+                            <strong>Maximum file size:</strong> 16MB<br>
+                            <strong>Processing time:</strong> 30-60 seconds depending on document length
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Section -->
+{% if summary %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="summary-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="mb-0">📄 AI Summary</h2>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                
+                <div id="summaryContent" class="summary-content">
+                    {% set formatted_summary = summary %}
+                    {% set formatted_summary = formatted_summary.replace('\n\n', '</p><p>') %}
+                    {% set formatted_summary = formatted_summary.replace('\n', '<br>') %}
+                    {% set formatted_summary = formatted_summary.replace('**', '<strong>') %}
+                    {% set formatted_summary = formatted_summary.replace('**', '</strong>') %}
+                    {% set formatted_summary = formatted_summary.replace('### ', '<h4>') %}
+                    {% set formatted_summary = formatted_summary.replace('## ', '<h3>') %}
+                    {% set formatted_summary = formatted_summary.replace('# ', '<h2>') %}
+                    <p>{{ formatted_summary | safe }}</p>
+                </div>
+                
+                <div class="mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        This summary was generated using Facebook's BART model. 
+                        For best results, ensure your PDF contains clear, readable text.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Features Section -->
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="text-center">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                    <i class="fas fa-bolt fa-lg"></i>
+                </div>
+                <h4>Fast Processing</h4>
+                <p class="text-muted">Get summaries in seconds using state-of-the-art AI models.</p>
+            </div>
+        </div>
         
-       <button type="submit" class="btn btn-success">Upload</button>
-    </form>
-    {% if summary %}
-      <h2>Summary: </h2>
-      <p>{{summary}}</p>
-    {% endif %}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
-  </body>
-</html>
+        <div class="col-lg-4 mb-4">
+            <div class="text-center">
+                <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                    <i class="fas fa-shield-alt fa-lg"></i>
+                </div>
+                <h4>Secure & Private</h4>
+                <p class="text-muted">Your documents are processed locally and never stored permanently.</p>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="text-center">
+                <div class="bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                    <i class="fas fa-brain fa-lg"></i>
+                </div>
+                <h4>Smart Summarization</h4>
+                <p class="text-muted">Advanced AI understands context and generates meaningful summaries.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard() {
+    const summaryText = document.getElementById('summaryContent').textContent;
+    navigator.clipboard.writeText(summaryText).then(function() {
+        // Show success message
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.classList.add('btn-success');
+        button.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+</script>
+
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}

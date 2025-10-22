@@ -1,70 +1,129 @@
-from flask import Flask, render_template, request
-from transformers import pipeline, AutoTokenizer
-import fitz
+"""
+BinkRead - AI-powered PDF summarization application
+A Flask web application that uses BART model to summarize PDF documents.
+"""
 
+import os
+import logging
+from flask import Flask, render_template, request, flash, redirect, url_for
+from werkzeug.utils import secure_filename
+from config import config
+from pdf_processor import PDFProcessor
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Create Flask app
 app = Flask(__name__)
+
+# Load configuration
+config_name = os.environ.get('FLASK_ENV', 'default')
+app.config.from_object(config[config_name])
+
+# Ensure upload directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Initialize PDF processor
+pdf_processor = None
+
+
+def init_processor():
+    """Initialize the PDF processor."""
+    global pdf_processor
+    try:
+        pdf_processor = PDFProcessor()
+        logger.info("PDF processor initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing PDF processor: {e}")
+        raise
+
+
+def allowed_file(filename: str) -> bool:
+    """Check if the uploaded file has an allowed extension."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
 @app.route('/')
 def home():
+    """Home page with file upload form."""
     return render_template('index.html')
 
-#Uploading pdf into database function
+
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
-   file = request.files['uploaded_file']
-   if file and file.filename.endswith('.pdf'):
-       pdf = fitz.open(stream=file.read(), filetype="pdf")
-       pdf_text = ""
-       # In this loop we r taking out all the text and storing it into a 'pdf_text' variable.
-       for page in pdf:
-           pdf_text += page.get_text()
-       
+    """Handle PDF upload and summarization."""
+    try:
+        if 'uploaded_file' not in request.files:
+            flash('No file selected', 'error')
+            return redirect(url_for('home'))
+        
+        file = request.files['uploaded_file']
+        
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(url_for('home'))
+        
+        if not allowed_file(file.filename):
+            flash('Invalid file type. Please upload a PDF file.', 'error')
+            return redirect(url_for('home'))
+        
+        # Check file size
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        if file_size > app.config['MAX_CONTENT_LENGTH']:
+            flash('File too large. Maximum size is 16MB.', 'error')
+            return redirect(url_for('home'))
+        
+        if file_size == 0:
+            flash('Empty file uploaded', 'error')
+            return redirect(url_for('home'))
+        
+        # Save file temporarily
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        
+        try:
+            # Process PDF
+            summary = pdf_processor.process_pdf(file_path)
+            return render_template('index.html', summary=summary)
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(file_path):
+                os.remove(file_path)
+    
+    except Exception as e:
+        logger.error(f"Error processing upload: {e}")
+        flash('An error occurred while processing the file', 'error')
+        return redirect(url_for('home'))
 
-       pdf_text = pdf_text.replace("\n", " ").replace("  ", " ") # cleans the pdf text by removing mid-sentence line breaks and double spaces.
 
-       # Now we will break the pdf text into small chunks of 4000 character and summarizes them
-       chunksize = 4000
-       start = 0
-       Complete_summary = ""
+@app.errorhandler(413)
+def too_large(e):
+    """Handle file too large error."""
+    flash('File too large. Maximum size is 16MB.', 'error')
+    return redirect(url_for('home'))
 
-          # In the with the help of bard model, the pipeline summarizes the pdf for us.
-       summarizer = pipeline("summarization", model="facebook/bart-large-cnn")  #Loading the model that will summarizes the pdf
 
-           #Initialize it for token count checking so that model won't get choke on too many tokens it can't handle it, which will helps in preventing crash       
-       tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
+@app.errorhandler(500)
+def internal_error(e):
+    """Handle internal server errors."""
+    logger.error(f"Internal server error: {e}")
+    flash('An internal error occurred. Please try again.', 'error')
+    return redirect(url_for('home'))
 
-       while(start<len(pdf_text)):
-           chunk = pdf_text[start:start+chunksize] # We will break the chunk after every 4000 characters
-           # But pdf_text[:4000] : This will cut in the middle of a word, which can break meaning and mess up tokenization.
-           last_space_index = chunk.rfind(" ")   # So we will find the last occurence of space within the 4000 character limit.
-
-           # If there is not space:
-           if last_space_index == -1:
-               last_space_index = chunksize # Fallback
-
-           chunk_text = pdf_text[start:start+last_space_index]  #Store the chunk
-           
-           #Before calling the summarizer we will skip the chunks that will exceed the token limit
-           if len(tokenizer.encode(chunk_text)) > 1024:
-                print("Skipping a chunk because it exceeds the token limit")
-                start += last_space_index + 1
-                continue
-
-           # Now Summarize this chunk_text         
-           #We store the summary in a variable
-           summary = summarizer(chunk_text, max_length=300, min_length=100)
-           Complete_summary += summary[0]['summary_text'] + "\n\n"
-           print(summary)
-           start = start+last_space_index+1  # Now move to next chunk 
-
-       return render_template("index.html",summary=Complete_summary)
-   return "Error"
-       
-       
-       
-       
-       
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Initialize processor on startup
+    init_processor()
+    
+    # Run the application
+    app.run(
+        debug=app.config['DEBUG'],
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT', 5000))
+    )
