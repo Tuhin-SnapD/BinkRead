@@ -1,6 +1,10 @@
 # BinkRead - AI-Powered PDF Summarizer
 
+![BinkRead Landing Page](landing.jpeg)
+
 A modern Flask web application that uses Facebook's BART model to automatically summarize PDF documents. Perfect for researchers, students, and professionals who need quick insights from lengthy documents.
+
+🔗 **Repository**: [https://github.com/Tuhin-SnapD/BinkRead](https://github.com/Tuhin-SnapD/BinkRead)
 
 ## Features
 
@@ -21,7 +25,7 @@ A modern Flask web application that uses Facebook's BART model to automatically 
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Tuhin-SnapD/BinkRead.git
    cd BinkRead
    ```
 
@@ -158,4 +162,4 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## Support
 
-For support, please open an issue on the GitHub repository.
+For support, please open an issue on the [GitHub repository](https://github.com/Tuhin-SnapD/BinkRead/issues).
